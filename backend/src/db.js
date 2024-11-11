@@ -1,36 +1,33 @@
-import { Database } from 'sqlite3';
-import { open } from 'sqlite';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import pkg from 'pg';
+const { Pool } = pkg;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dirname, '../db.sqlite');
-
-let db;
+let pool;
 
 export async function getDb() {
-  if (!db) {
-    db = await open({
-      filename: dbPath,
-      driver: Database
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? {
+        rejectUnauthorized: false
+      } : false
     });
   }
-  return db;
+  return pool;
 }
 
 export async function initDb() {
-  const db = await getDb();
+  const pool = await getDb();
   
-  await db.exec(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       login TEXT NOT NULL,
       display_name TEXT NOT NULL,
       profile_image_url TEXT NOT NULL,
-      is_live BOOLEAN DEFAULT 0,
+      is_live BOOLEAN DEFAULT FALSE,
       category TEXT,
       title TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS requests (
@@ -39,7 +36,7 @@ export async function initDb() {
       title TEXT NOT NULL,
       description TEXT NOT NULL,
       category TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
@@ -49,8 +46,8 @@ export async function initDb() {
       from_user_id TEXT NOT NULL,
       to_user_id TEXT NOT NULL,
       content TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      read BOOLEAN DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      read BOOLEAN DEFAULT FALSE,
       FOREIGN KEY (request_id) REFERENCES requests(id),
       FOREIGN KEY (from_user_id) REFERENCES users(id),
       FOREIGN KEY (to_user_id) REFERENCES users(id)
