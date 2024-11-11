@@ -8,16 +8,18 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,
+      retry: 1,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5 minutes
-      onError: (error: Error) => {
-        console.error('Query error:', error);
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        console.error('Query error:', errorMessage);
       },
     },
     mutations: {
-      onError: (error: Error) => {
-        console.error('Mutation error:', error);
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        console.error('Mutation error:', errorMessage);
       },
     },
   },

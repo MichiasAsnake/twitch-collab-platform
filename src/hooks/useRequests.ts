@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { fetchRequests, createRequest } from '../lib/api';
 import { useStore } from '../store';
+import { CollabRequest } from '../types';
 
 export function useRequests() {
-  return useQuery('requests', fetchRequests);
+  return useQuery<CollabRequest[], Error>('requests', fetchRequests, {
+    onError: (error) => {
+      console.error('Failed to fetch requests:', error.message);
+    }
+  });
 }
 
 export function useCreateRequest() {
@@ -16,7 +21,9 @@ export function useCreateRequest() {
       useStore.getState().addRequest(newRequest);
     },
     onError: (error: Error) => {
-      setError(error.message);
+      const errorMessage = error?.message || 'Failed to create request';
+      console.error('Create request error:', errorMessage);
+      setError(errorMessage);
     },
   });
 }
