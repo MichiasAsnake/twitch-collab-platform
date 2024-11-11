@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: twitch-collab-api
+    env: node
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:./db.sqlite
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        value: https://stirring-longma-bc41fd.netlify.app
