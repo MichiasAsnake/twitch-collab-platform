@@ -11,46 +11,49 @@ export function OAuthCallback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Get the full URL including hash
-        const fullUrl = window.location.href;
-        console.log('Full callback URL:', fullUrl);
-
-        // Get everything after the # symbol
-        const hashPart = fullUrl.split('#')[1];
-        if (!hashPart) {
-          throw new Error('No hash parameters found in URL');
-        }
-
-        const params = new URLSearchParams(hashPart);
-        const accessToken = params.get('access_token');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
-
-        console.log('Auth params:', { 
-          hasToken: !!accessToken, 
-          error, 
-          errorDescription 
-        });
-
-        if (error || errorDescription) {
-          throw new Error(errorDescription || 'Authentication failed');
-        }
-
-        if (!accessToken) {
-          throw new Error('No access token provided');
-        }
-
-        // Store token first
-        localStorage.setItem('twitch_token', accessToken);
+        let accessToken;
         
-        console.log('Fetching Twitch user data...');
-        const userData = await getTwitchUser(accessToken);
-        console.log('User data received:', userData.displayName);
+        // Check if we're handling a new login or using existing token
+        if (window.location.hash) {
+          // Handle new login flow
+          const hashPart = window.location.href.split('#')[1];
+          const params = new URLSearchParams(hashPart);
+          accessToken = params.get('access_token');
+          const error = params.get('error');
+          const errorDescription = params.get('error_description');
 
-        setUser(userData);
+          if (error || errorDescription) {
+            throw new Error(errorDescription || 'Authentication failed');
+          }
+
+          if (!accessToken) {
+            throw new Error('No access token provided');
+          }
+
+          // Store new token
+          localStorage.setItem('twitch_token', accessToken);
+        } else {
+          // Check for existing token
+          accessToken = localStorage.getItem('twitch_token');
+          if (!accessToken) {
+            localStorage.removeItem('twitch_user_id');
+            navigate('/', { replace: true });
+            return;
+          }
+        }
         
-        // Navigate home with replace to prevent back navigation
-        navigate('/', { replace: true });
+        // Try to get user data with token
+        try {
+          const userData = await getTwitchUser(accessToken);
+          setUser(userData);
+          navigate('/', { replace: true });
+        } catch (error) {
+          // If token is invalid, clear all auth data
+          localStorage.removeItem('twitch_token');
+          localStorage.removeItem('twitch_user_id');
+          throw error;
+        }
+
       } catch (error) {
         console.error('Auth error:', error);
         setError(error instanceof Error ? error.message : 'Authentication failed');
@@ -58,7 +61,6 @@ export function OAuthCallback() {
       }
     };
 
-    // Run the auth handler
     handleAuth();
   }, [navigate, setUser, setError]);
 

@@ -2,13 +2,25 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TwitchUser, CollabRequest, Message } from './types';
 
-interface Store {
-  user: TwitchUser | null;
+interface AuthState {
+  token: string | null;
+  clientId: string;
+}
+
+interface User {
+  id: string;
+  displayName: string;
+  profileImageUrl: string;
+}
+
+interface State {
+  user: User | null;
   requests: CollabRequest[];
   messages: Message[];
   darkMode: boolean;
   error: string | null;
-  setUser: (user: TwitchUser | null) => void;
+  auth: AuthState;
+  setUser: (user: User | null) => void;
   setRequests: (requests: CollabRequest[]) => void;
   addRequest: (request: CollabRequest) => void;
   addMessage: (message: Message) => void;
@@ -16,9 +28,11 @@ interface Store {
   getUnreadCount: () => number;
   toggleDarkMode: () => void;
   setError: (error: string | null) => void;
+  setAuth: (auth: Partial<AuthState>) => void;
+  clearAuth: () => void;
 }
 
-export const useStore = create<Store>()(
+export const useStore = create<State>()(
   persist(
     (set, get) => ({
       user: null,
@@ -26,6 +40,10 @@ export const useStore = create<Store>()(
       messages: [],
       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
       error: null,
+      auth: {
+        token: localStorage.getItem('twitch_token'),
+        clientId: import.meta.env.VITE_TWITCH_CLIENT_ID
+      },
       setUser: (user) => set({ user }),
       setRequests: (requests) => set({ requests }),
       addRequest: (request) => set((state) => ({ 
@@ -49,6 +67,21 @@ export const useStore = create<Store>()(
         darkMode: !state.darkMode 
       })),
       setError: (error) => set({ error }),
+      setAuth: (auth) => {
+        set((state) => ({
+          auth: { ...state.auth, ...auth }
+        }));
+        if (auth.token) {
+          localStorage.setItem('twitch_token', auth.token);
+        }
+      },
+      clearAuth: () => {
+        localStorage.removeItem('twitch_token');
+        set((state) => ({
+          auth: { ...state.auth, token: null },
+          user: null
+        }));
+      }
     }),
     {
       name: 'twitch-collab-storage',

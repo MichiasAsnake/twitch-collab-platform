@@ -6,6 +6,9 @@ export const router = Router();
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
+  console.log('Auth header:', req.headers.authorization);
+  console.log('Extracted token:', token);
+  
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
@@ -204,6 +207,64 @@ router.get('/users/:userId/messages', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching user messages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add this with your other routes
+router.delete('/requests/:id', authMiddleware, async (req, res) => {
+  const client = await getDb();
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    console.log('Request body:', req.body);
+    console.log('UserID type:', typeof userId);
+
+    await client.query('BEGIN');  // Start transaction
+
+    const checkResult = await client.query(
+      'SELECT user_id FROM requests WHERE id = $1',
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const ownerUserId = checkResult.rows[0].user_id;
+    console.log('Owner ID type:', typeof ownerUserId);
+    console.log('Comparing:', {
+      requestingUserId: userId,
+      ownerUserId: ownerUserId,
+      areEqual: ownerUserId === userId
+    });
+
+    if (ownerUserId !== userId) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ 
+        error: 'Not authorized to delete this request',
+        requestOwner: ownerUserId,
+        requestingUser: userId
+      });
+    }
+
+    console.log('Deleting messages...');
+    const messageResult = await client.query('DELETE FROM messages WHERE request_id = $1', [id]);
+    console.log(`Deleted ${messageResult.rowCount} messages`);
+    
+    console.log('Deleting request...');
+    const requestResult = await client.query('DELETE FROM requests WHERE id = $1', [id]);
+    console.log(`Deleted ${requestResult.rowCount} requests`);
+
+    await client.query('COMMIT');
+    console.log('Transaction committed successfully');
+
+    res.status(200).json({ message: 'Request deleted successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting request:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

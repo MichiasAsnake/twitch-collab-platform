@@ -27,6 +27,21 @@ export interface Message {
   createdAt: string;
   requestId?: string;
   read: boolean;
+  conversationId: string;
+}
+
+export interface Conversation {
+  id: string;
+  participants: TwitchUser[];
+  lastMessage: Message;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+export interface User {
+  id: string;
+  displayName: string;
+  profileImageUrl: string;
 }
 
 export type Category = 'Just Chatting' | 'Rust' | 'GTA' | 'Call of Duty';

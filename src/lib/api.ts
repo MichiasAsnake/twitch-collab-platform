@@ -1,79 +1,116 @@
-import { socket } from './socket';
-import { CollabRequest, Message, TwitchUser } from '../types';
 import { useStore } from '../store';
+import { CollabRequest } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('twitch_token');
-  if (!token) throw new Error('Not authenticated');
+interface SendMessageData {
+  content: string;
+  toUserId: string;
+  requestId: string;
+}
 
-  const response = await fetch(url, {
-    ...options,
+export async function sendMessage(data: SendMessageData) {
+  const user = useStore.getState().user;
+  if (!user) throw new Error('Not authenticated');
+  if (!data.toUserId) throw new Error('toUserId is required');
+
+  try {
+    console.log('Sending message with data:', {
+      ...data,
+      fromUserId: user.id,
+      fromUser: user
+    });
+
+    const response = await fetch(`${API_URL}/api/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+      },
+      body: JSON.stringify({
+        ...data,
+        fromUserId: user.id,
+        fromUser: user
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send message');
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+}
+
+export async function fetchMessages(requestId: string) {
+  const response = await fetch(`${API_URL}/api/messages/${requestId}`, {
     headers: {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+      'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+    }
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message || 'Request failed');
+    throw new Error('Failed to fetch messages');
   }
 
   return response.json();
 }
 
-export async function fetchRequests(): Promise<CollabRequest[]> {
-  return fetchWithAuth(`${API_URL}/api/requests`);
+export async function fetchUserMessages(userId: string) {
+  const response = await fetch(`${API_URL}/api/users/${userId}/messages`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user messages');
+  }
+
+  return response.json();
 }
 
-export async function createRequest(data: {
-  title: string;
-  description: string;
-  category: string;
-}): Promise<CollabRequest> {
+export const createRequest = async (requestData: CollabRequest) => {
   const user = useStore.getState().user;
   if (!user) throw new Error('Not authenticated');
 
-  return fetchWithAuth(`${API_URL}/api/requests`, {
+  const response = await fetch(`${API_URL}/api/requests`, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+    },
     body: JSON.stringify({
-      ...data,
+      ...requestData,
       userId: user.id,
-      user: user, // Include full user object for immediate display
+      user: user
     }),
   });
-}
+  
+  if (!response.ok) {
+    throw new Error('Failed to create request');
+  }
+  
+  return response.json();
+};
 
-export async function fetchMessages(requestId: string): Promise<Message[]> {
-  return fetchWithAuth(`${API_URL}/api/messages/${requestId}`);
-}
+export const fetchRequests = async () => {
+  const response = await fetch(`${API_URL}/api/requests`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch requests');
+  }
+  return response.json();
+};
 
-export async function sendMessage(data: {
-  content: string;
-  requestId: string;
-  toUserId: string;
-}): Promise<Message> {
-  const user = useStore.getState().user;
-  if (!user) throw new Error('Not authenticated');
-
-  const message = await fetchWithAuth(`${API_URL}/api/messages`, {
-    method: 'POST',
-    body: JSON.stringify({
-      ...data,
-      fromUserId: user.id,
-      fromUser: user, // Include full user object for immediate display
-    }),
+export const deleteRequest = async (requestId: string) => {
+  const response = await fetch(`/api/requests/${requestId}`, {
+    method: 'DELETE',
   });
-
-  // Emit message through WebSocket
-  socket.emit('message', message);
-
-  return message;
-}
-
-export async function fetchUserMessages(userId: string): Promise<Message[]> {
-  return fetchWithAuth(`${API_URL}/api/users/${userId}/messages`);
-}
+  if (!response.ok) {
+    throw new Error('Failed to delete request');
+  }
+  return requestId;
+};

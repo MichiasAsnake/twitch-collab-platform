@@ -1,6 +1,6 @@
 import React from 'react';
 import { RequestCard } from './RequestCard';
-import { useRequests } from '../hooks/useRequests';
+import { useRequests, useDeleteRequest } from '../hooks/useRequests';
 import { Category } from '../types';
 
 interface RequestGridProps {
@@ -10,6 +10,19 @@ interface RequestGridProps {
 
 export function RequestGrid({ selectedCategory, showLiveOnly }: RequestGridProps) {
   const { data: requests = [], isLoading, error } = useRequests();
+  const deleteRequestMutation = useDeleteRequest();
+
+  const filteredRequests = React.useMemo(() => {
+    return requests.filter((request) => {
+      if (selectedCategory && request.category !== selectedCategory) return false;
+      if (showLiveOnly && !request.user.isLive) return false;
+      return true;
+    });
+  }, [requests, selectedCategory, showLiveOnly]);
+
+  const handleDelete = React.useCallback((deletedId: string) => {
+    deleteRequestMutation.mutate(deletedId);
+  }, [deleteRequestMutation]);
 
   if (isLoading) {
     return (
@@ -50,12 +63,6 @@ export function RequestGrid({ selectedCategory, showLiveOnly }: RequestGridProps
     );
   }
 
-  const filteredRequests = requests.filter((request) => {
-    if (selectedCategory && request.category !== selectedCategory) return false;
-    if (showLiveOnly && !request.user.isLive) return false;
-    return true;
-  });
-
   if (filteredRequests.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
@@ -67,10 +74,14 @@ export function RequestGrid({ selectedCategory, showLiveOnly }: RequestGridProps
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 p-6">
         {filteredRequests.map((request) => (
-          <RequestCard key={request.id} request={request} />
+          <RequestCard 
+            key={request.id} 
+            request={request}
+            onDelete={() => handleDelete(request.id)}
+          />
         ))}
       </div>
     </div>
