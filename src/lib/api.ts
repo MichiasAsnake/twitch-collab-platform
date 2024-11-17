@@ -26,6 +26,7 @@ export const sendMessage = async ({
 }) => {
   const response = await fetch(`${API_URL}/api/messages`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
@@ -48,6 +49,7 @@ export const sendMessage = async ({
 
 export async function fetchMessages(requestId: string) {
   const response = await fetch(`${API_URL}/api/messages/${requestId}`, {
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
     }
@@ -62,6 +64,7 @@ export async function fetchMessages(requestId: string) {
 
 export async function fetchUserMessages(userId: string) {
   const response = await fetch(`${API_URL}/api/users/${userId}/messages`, {
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
     }
@@ -82,6 +85,7 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Coll
 
   const response = await fetch(`${API_URL}/api/requests`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -104,7 +108,9 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Coll
 }
 
 export const fetchRequests = async () => {
-  const response = await fetch(`${API_URL}/api/requests`);
+  const response = await fetch(`${API_URL}/api/requests`, {
+    credentials: 'include'
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch requests');
   }
@@ -114,6 +120,7 @@ export const fetchRequests = async () => {
 export const deleteRequest = async (requestId: string) => {
   const response = await fetch(`${API_URL}/api/requests/${requestId}`, {
     method: 'DELETE',
+    credentials: 'include'
   });
   if (!response.ok) {
     throw new Error('Failed to delete request');
@@ -122,7 +129,9 @@ export const deleteRequest = async (requestId: string) => {
 };
 
 export const fetchCategories = async () => {
-  const response = await fetch(`${API_URL}/api/categories`);
+  const response = await fetch(`${API_URL}/api/categories`, {
+    credentials: 'include'
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }

@@ -14,7 +14,10 @@ const socket = io(SOCKET_URL, {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   timeout: 60000,
-  withCredentials: true
+  withCredentials: true,
+  extraHeaders: {
+    'Access-Control-Allow-Origin': '*'
+  }
 });
 
 socket.on('connect', () => {
@@ -57,6 +60,7 @@ export function getTwitchAuthUrl() {
 export async function getTwitchUser(accessToken: string): Promise<TwitchUser> {
   // First get user data
   const userResponse = await fetch('https://api.twitch.tv/helix/users', {
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Client-Id': import.meta.env.VITE_TWITCH_CLIENT_ID,
@@ -124,6 +128,7 @@ export async function getAppAccessToken() {
 
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
