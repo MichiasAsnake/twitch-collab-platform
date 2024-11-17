@@ -1,88 +1,67 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { RequestCard } from './RequestCard';
 import { useRequests, useDeleteRequest } from '../hooks/useRequests';
 import { Category } from '../types';
+import { useQueryClient } from 'react-query';
+import { socket } from '../lib/socket';
+import { updateUserLiveStatus } from '../api';
+import { useStreamersStatus } from '../hooks/useStreamersStatus';
 
 interface RequestGridProps {
   selectedCategory: Category | null;
   showLiveOnly: boolean;
+  selectedLanguage: string | null;
 }
 
-export function RequestGrid({ selectedCategory, showLiveOnly }: RequestGridProps) {
+export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }: RequestGridProps) {
   const { data: requests = [], isLoading, error } = useRequests();
   const deleteRequestMutation = useDeleteRequest();
+  const queryClient = useQueryClient();
 
-  const filteredRequests = React.useMemo(() => {
+  // Get all unique user IDs from all requests
+  const userIds = useMemo(() => 
+    [...new Set(requests.map(request => request.user.id))], 
+    [requests]
+  );
+  
+  // Single status subscription for all streamers
+  const { data: streamersStatus = [] } = useStreamersStatus(userIds);
+
+  // Add the requestKey memo
+  const requestKey = useMemo(() => 
+    requests.map(r => r.id).join(','), 
+    [requests]
+  );
+
+  const filteredRequests = useMemo(() => {
     return requests.filter((request) => {
-      if (selectedCategory && request.category !== selectedCategory) return false;
-      if (showLiveOnly && !request.user.isLive) return false;
+      const isLive = streamersStatus.find(status => status.userId === request.user.id)?.isLive || false;
+      
+      if (selectedCategory && !request.categories.includes(selectedCategory)) return false;
+      if (showLiveOnly && !isLive) return false;
+      if (selectedLanguage && request.language !== selectedLanguage) return false;
       return true;
     });
-  }, [requests, selectedCategory, showLiveOnly]);
+  }, [requests, streamersStatus, selectedCategory, showLiveOnly, selectedLanguage]);
 
-  const handleDelete = React.useCallback((deletedId: string) => {
-    deleteRequestMutation.mutate(deletedId);
-  }, [deleteRequestMutation]);
-
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden animate-pulse"
-            >
-              <div className="p-4 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                  <div className="space-y-2">
-                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <p className="text-red-600 dark:text-red-400">
-          Error loading requests. Please try again later.
-        </p>
-      </div>
-    );
-  }
-
-  if (filteredRequests.length === 0) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <p className="text-gray-500 dark:text-gray-400">
-          No requests found. Try adjusting your filters or create a new request.
-        </p>
-      </div>
-    );
-  }
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading requests</div>;
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 p-6">
-        {filteredRequests.map((request) => (
-          <RequestCard 
-            key={request.id} 
-            request={request}
-            onDelete={() => handleDelete(request.id)}
-          />
-        ))}
+    <div className="overflow-x-hidden w-full">
+      <div className="max-w-[2000px] mx-auto px-10 py-8">
+        <div 
+          key={requestKey}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8"
+        >
+          {filteredRequests.map((request) => (
+            <RequestCard 
+              key={request.id}
+              request={request}
+              isLive={streamersStatus.find(status => status.userId === request.user.id)?.isLive || false}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

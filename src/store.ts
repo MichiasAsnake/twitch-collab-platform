@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TwitchUser, CollabRequest, Message } from './types';
+import { socket } from './lib/socket';
 
 interface AuthState {
   token: string | null;
@@ -11,18 +12,16 @@ interface User {
   id: string;
   displayName: string;
   profileImageUrl: string;
+  isLive: boolean;
 }
 
 interface State {
   user: User | null;
-  requests: CollabRequest[];
   messages: Message[];
   darkMode: boolean;
   error: string | null;
   auth: AuthState;
   setUser: (user: User | null) => void;
-  setRequests: (requests: CollabRequest[]) => void;
-  addRequest: (request: CollabRequest) => void;
   addMessage: (message: Message) => void;
   markMessageAsRead: (messageId: string) => void;
   getUnreadCount: () => number;
@@ -30,13 +29,15 @@ interface State {
   setError: (error: string | null) => void;
   setAuth: (auth: Partial<AuthState>) => void;
   clearAuth: () => void;
+  setMessagesRead: (fromUserId: string) => void;
+  updateUserStatus: (userId: string, isLive: boolean) => void;
+  setMessages: (messages: Message[]) => void;
 }
 
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
       user: null,
-      requests: [],
       messages: [],
       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
       error: null,
@@ -44,14 +45,24 @@ export const useStore = create<State>()(
         token: localStorage.getItem('twitch_token'),
         clientId: import.meta.env.VITE_TWITCH_CLIENT_ID
       },
-      setUser: (user) => set({ user }),
-      setRequests: (requests) => set({ requests }),
-      addRequest: (request) => set((state) => ({ 
-        requests: [request, ...state.requests] 
-      })),
-      addMessage: (message) => set((state) => ({
-        messages: [message, ...state.messages]
-      })),
+      setUser: (user) => {
+        if (user) {
+          socket.emit('join', user.id);
+        }
+        set({ user });
+      },
+      addMessage: (message) => set((state) => {
+        if (state.messages.some(m => m.id === message.id)) {
+          return { messages: state.messages };
+        }
+        
+        return {
+          messages: [{
+            ...message,
+            read: message.fromUser.id === state.user?.id
+          }, ...state.messages]
+        };
+      }),
       markMessageAsRead: (messageId) => set((state) => ({
         messages: state.messages.map(msg => 
           msg.id === messageId ? { ...msg, read: true } : msg
@@ -60,7 +71,8 @@ export const useStore = create<State>()(
       getUnreadCount: () => {
         const state = get();
         return state.messages.filter(msg => 
-          !msg.read && msg.toUser.id === state.user?.id
+          !msg.read && 
+          msg.toUser.id === state.user?.id
         ).length;
       },
       toggleDarkMode: () => set((state) => ({ 
@@ -81,12 +93,26 @@ export const useStore = create<State>()(
           auth: { ...state.auth, token: null },
           user: null
         }));
-      }
+      },
+      setMessagesRead: (fromUserId) => 
+        set(state => ({
+          messages: state.messages.map(msg => 
+            (msg.fromUser.id === fromUserId || msg.toUser.id === fromUserId)
+              ? { ...msg, read: true }
+              : msg
+          )
+        })),
+      updateUserStatus: (userId: string, isLive: boolean) => 
+        set((state) => ({
+          user: state.user?.id === userId 
+            ? { ...state.user, isLive }
+            : state.user
+        })),
+      setMessages: (messages) => set({ messages }),
     }),
     {
       name: 'twitch-collab-storage',
       partialize: (state) => ({
-        requests: state.requests,
         messages: state.messages,
         darkMode: state.darkMode,
       }),

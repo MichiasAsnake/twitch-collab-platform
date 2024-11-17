@@ -6,17 +6,19 @@ export interface TwitchUser {
   displayName: string;
   profileImageUrl: string;
   isLive: boolean;
-  category: string;
-  title: string;
+  category?: string;
+  title?: string;
 }
 
 export interface CollabRequest {
   id: string;
-  user: TwitchUser;
+  userId: string;
   title: string;
   description: string;
-  category: string;
+  categories: string[];
   createdAt: string;
+  user: TwitchUser;
+  language?: string | null;
 }
 
 export interface Message {
@@ -33,6 +35,7 @@ export interface Message {
 export interface Conversation {
   id: string;
   participants: TwitchUser[];
+  requestId: string;
   lastMessage: Message;
   unreadCount: number;
   updatedAt: string;
@@ -45,3 +48,19 @@ export interface User {
 }
 
 export type Category = 'Just Chatting' | 'Rust' | 'GTA' | 'Call of Duty';
+
+export interface CreateRequestPayload {
+  title: string;
+  description: string;
+  categories: string[];
+  userId: string;
+  user: {
+    id: string;
+    login: string;
+    displayName: string;
+    profileImageUrl: string;
+    isLive: boolean;
+    category?: string;
+    title?: string;
+  };
+}

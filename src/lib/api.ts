@@ -1,49 +1,50 @@
 import { useStore } from '../store';
-import { CollabRequest } from '../types';
+import { CollabRequest, User } from '../types';
+import { getTwitchAuthUrl } from './twitch';
 
-const API_URL = import.meta.env.VITE_API_URL;
+export const API_URL = import.meta.env.VITE_API_URL;
 
-interface SendMessageData {
+
+interface CreateRequestPayload {
+  title: string;
+  description: string;
+  category: string;
+}
+
+export const sendMessage = async ({
+  content,
+  toUserId,
+  requestId,
+  fromUserId,
+  fromUser
+}: {
   content: string;
   toUserId: string;
   requestId: string;
-}
+  fromUserId: string;
+  fromUser: User;
+}) => {
+  const response = await fetch(`${API_URL}/api/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+    },
+    body: JSON.stringify({
+      content,
+      toUserId,
+      requestId,
+      fromUserId,
+      fromUser
+    })
+  });
 
-export async function sendMessage(data: SendMessageData) {
-  const user = useStore.getState().user;
-  if (!user) throw new Error('Not authenticated');
-  if (!data.toUserId) throw new Error('toUserId is required');
-
-  try {
-    console.log('Sending message with data:', {
-      ...data,
-      fromUserId: user.id,
-      fromUser: user
-    });
-
-    const response = await fetch(`${API_URL}/api/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
-      },
-      body: JSON.stringify({
-        ...data,
-        fromUserId: user.id,
-        fromUser: user
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to send message');
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Error sending message:', error);
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to send message');
   }
-}
+
+  return response.json();
+};
 
 export async function fetchMessages(requestId: string) {
   const response = await fetch(`${API_URL}/api/messages/${requestId}`, {
@@ -73,29 +74,34 @@ export async function fetchUserMessages(userId: string) {
   return response.json();
 }
 
-export const createRequest = async (requestData: CollabRequest) => {
-  const user = useStore.getState().user;
-  if (!user) throw new Error('Not authenticated');
+export async function createRequest(payload: CreateRequestPayload): Promise<CollabRequest> {
+  const token = localStorage.getItem('twitch_token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
 
   const response = await fetch(`${API_URL}/api/requests`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('twitch_token')}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      ...requestData,
-      userId: user.id,
-      user: user
-    }),
+    body: JSON.stringify(payload)
   });
-  
+
   if (!response.ok) {
-    throw new Error('Failed to create request');
+    const error = await response.json();
+    if (response.status === 401) {
+      localStorage.removeItem('twitch_token');
+      localStorage.removeItem('twitch_user_id');
+      window.location.href = getTwitchAuthUrl();
+      return;
+    }
+    throw new Error(error.error || 'Failed to create request');
   }
-  
+
   return response.json();
-};
+}
 
 export const fetchRequests = async () => {
   const response = await fetch(`${API_URL}/api/requests`);
@@ -106,11 +112,19 @@ export const fetchRequests = async () => {
 };
 
 export const deleteRequest = async (requestId: string) => {
-  const response = await fetch(`/api/requests/${requestId}`, {
+  const response = await fetch(`${API_URL}/api/requests/${requestId}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
     throw new Error('Failed to delete request');
   }
   return requestId;
+};
+
+export const fetchCategories = async () => {
+  const response = await fetch(`${API_URL}/api/categories`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch categories');
+  }
+  return response.json();
 };

@@ -9,10 +9,8 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className={`fixed inset-0 z-50 overflow-y-auto ${isOpen ? '' : 'hidden'}`}>
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
         
@@ -21,9 +19,9 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             <h3 className="text-lg font-medium dark:text-white">{title}</h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             >
-              <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              ✕
             </button>
           </div>
           {children}

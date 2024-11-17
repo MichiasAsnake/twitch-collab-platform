@@ -19,25 +19,20 @@ export async function initDb() {
   const pool = await getDb();
   
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      login TEXT NOT NULL,
-      display_name TEXT NOT NULL,
-      profile_image_url TEXT NOT NULL,
-      is_live BOOLEAN DEFAULT FALSE,
-      category TEXT,
-      title TEXT,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-
     CREATE TABLE IF NOT EXISTS requests (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT NOT NULL,
-      category TEXT NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS request_categories (
+      request_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      PRIMARY KEY (request_id, category),
+      FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS messages (

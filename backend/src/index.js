@@ -5,7 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { router } from './routes.js';
 import { setupWebSocket } from './websocket.js';
-import { initDb } from './db.js';
+import { initDb, getDb } from './db.js';
+import { subscribeToStreamStatus } from './twitch.js';
 
 dotenv.config();
 
@@ -54,5 +55,13 @@ const port = process.env.PORT || 3000;
 
 httpServer.listen(port, async () => {
   await initDb();
+  
+  // Subscribe to all existing users' stream status
+  const pool = await getDb();
+  const users = await pool.query('SELECT id FROM users');
+  for (const { id } of users.rows) {
+    await subscribeToStreamStatus(id);
+  }
+  
   console.log(`Server running on port ${port}`);
 });

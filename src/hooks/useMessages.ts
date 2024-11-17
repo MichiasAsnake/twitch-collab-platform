@@ -21,21 +21,29 @@ export function useMessages(requestId: string) {
   );
 }
 
-export function useSendMessage() {
+export function useSendConversationMessage() {
   const queryClient = useQueryClient();
   const setError = useStore((state) => state.setError);
 
-  return useMutation(sendMessage, {
-    onSuccess: (newMessage) => {
-      queryClient.invalidateQueries('messages');
-      useStore.getState().addMessage(newMessage);
-    },
-    onError: (error: Error) => {
-      const errorMessage = error?.message || 'Failed to send message';
-      console.error('Send message error:', errorMessage);
-      setError(errorMessage);
-    },
-  });
+  return useMutation(
+    ({ content, toUserId, requestId }: { content: string; toUserId: string; requestId: string }) =>
+      sendMessage({
+        content,
+        toUserId,
+        requestId
+      }),
+    {
+      onSuccess: (newMessage) => {
+        queryClient.invalidateQueries('messages');
+        useStore.getState().addMessage(newMessage);
+      },
+      onError: (error: Error) => {
+        const errorMessage = error?.message || 'Failed to send message';
+        console.error('Send message error:', errorMessage);
+        setError(errorMessage);
+      },
+    }
+  );
 }
 
 export function useUserMessages(userId: string | undefined) {

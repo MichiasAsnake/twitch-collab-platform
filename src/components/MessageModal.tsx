@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { sendMessage } from '../lib/api';
+import { useStore } from '../store';
 
 interface MessageModalProps {
   onClose: () => void;
@@ -9,15 +10,18 @@ interface MessageModalProps {
 
 export function MessageModal({ onClose, requestId, toUserId }: MessageModalProps) {
   const [message, setMessage] = useState('');
+  const currentUser = useStore(state => state.user);
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !currentUser) return;
     
     try {
       await sendMessage({
         content: message,
         toUserId,
-        requestId
+        requestId,
+        fromUserId: currentUser.id,
+        fromUser: currentUser
       });
       
       onClose();

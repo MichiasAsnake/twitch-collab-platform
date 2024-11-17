@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from './db.js';
+import { getWebSocket } from './websocket.js';
 
 export const router = Router();
 
@@ -24,6 +25,7 @@ router.options('*', (req, res) => {
 router.get('/requests', async (req, res) => {
   try {
     const pool = await getDb();
+    
     const result = await pool.query(`
       SELECT 
         r.*,
@@ -35,9 +37,12 @@ router.get('/requests', async (req, res) => {
           'isLive', u.is_live,
           'category', u.category,
           'title', u.title
-        ) as user
+        ) as user,
+        COALESCE(ARRAY_AGG(rc.category) FILTER (WHERE rc.category IS NOT NULL), ARRAY[]::text[]) as categories
       FROM requests r
       JOIN users u ON r.user_id = u.id
+      LEFT JOIN request_categories rc ON r.id = rc.request_id
+      GROUP BY r.id, u.id, u.login, u.display_name, u.profile_image_url, u.is_live, u.category, u.title
       ORDER BY r.created_at DESC
     `);
     
@@ -53,7 +58,7 @@ router.post('/requests', authMiddleware, async (req, res) => {
   const client = await getDb();
   try {
     await client.query('BEGIN');
-    const { title, description, category, userId, user } = req.body;
+    const { title, description, categories, language, userId, user } = req.body;
 
     // First ensure user exists
     await client.query(`
@@ -76,12 +81,20 @@ router.post('/requests', authMiddleware, async (req, res) => {
       user.title
     ]);
 
-    // Then create request
+    // Create request
     const requestId = uuidv4();
     await client.query(`
-      INSERT INTO requests (id, user_id, title, description, category)
+      INSERT INTO requests (id, user_id, title, description, language)
       VALUES ($1, $2, $3, $4, $5)
-    `, [requestId, userId, title, description, category]);
+    `, [requestId, userId, title, description, language]);
+
+    // Insert categories
+    for (const category of categories) {
+      await client.query(`
+        INSERT INTO request_categories (request_id, category)
+        VALUES ($1, $2)
+      `, [requestId, category]);
+    }
 
     await client.query('COMMIT');
 
@@ -90,7 +103,8 @@ router.post('/requests', authMiddleware, async (req, res) => {
       userId,
       title,
       description,
-      category,
+      categories,
+      language,
       createdAt: new Date().toISOString(),
       user
     };
@@ -146,10 +160,13 @@ router.post('/messages', authMiddleware, async (req, res) => {
     const { content, requestId, fromUserId, toUserId, fromUser } = req.body;
 
     const messageId = uuidv4();
+    const now = new Date().toISOString();
+
     await client.query(`
-      INSERT INTO messages (id, request_id, from_user_id, to_user_id, content)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [messageId, requestId, fromUserId, toUserId, content]);
+      INSERT INTO messages (id, request_id, from_user_id, to_user_id, content, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING created_at
+    `, [messageId, requestId, fromUserId, toUserId, content, now]);
 
     const toUserResult = await client.query(
       'SELECT * FROM users WHERE id = $1',
@@ -162,12 +179,18 @@ router.post('/messages', authMiddleware, async (req, res) => {
       id: messageId,
       requestId,
       content,
+      createdAt: now,
+      read: false,
       fromUser,
-      toUser: toUserResult.rows[0],
-      createdAt: new Date().toISOString(),
-      read: false
+      toUser: {
+        id: toUserResult.rows[0].id,
+        login: toUserResult.rows[0].login,
+        displayName: toUserResult.rows[0].display_name,
+        profileImageUrl: toUserResult.rows[0].profile_image_url
+      }
     };
 
+    getWebSocket().broadcastMessage(message);
     res.status(201).json(message);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -268,3 +291,89 @@ router.delete('/requests/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Add this new route with your other routes
+router.get('/categories', authMiddleware, async (req, res) => {
+  try {
+    const response = await fetch('https://api.twitch.tv/helix/games/top?first=100', {
+      headers: {
+        'Authorization': `Bearer ${req.token}`,
+        'Client-Id': process.env.TWITCH_CLIENT_ID
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch from Twitch API');
+    }
+
+    const data = await response.json();
+    const categories = data.data.map(game => ({
+      id: game.id,
+      name: game.name
+    }));
+
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add this route with your other routes
+router.post('/webhooks/twitch', async (req, res) => {
+  try {
+    const event = req.body;
+    const isLive = event.type === 'stream.online';
+    const userId = event.broadcaster_user_id;
+    
+    // Update database
+    const pool = await getDb();
+    
+    // First update user's live status
+    await pool.query('UPDATE users SET is_live = $1 WHERE id = $2', [isLive, userId]);
+    
+    // Then fetch all their requests to broadcast updated data
+    const requests = await pool.query(`
+      SELECT r.*, json_build_object(
+        'id', u.id,
+        'displayName', u.display_name,
+        'profileImageUrl', u.profile_image_url,
+        'isLive', u.is_live
+      ) as user
+      FROM requests r
+      JOIN users u ON r.user_id = u.id
+      WHERE u.id = $1
+    `, [userId]);
+
+    // Broadcast via WebSocket
+    getWebSocket().handleStreamEvent(event);
+    
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Error handling webhook:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add this new route
+router.get('/users/:userId/status', authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = await getDb();
+    
+    const result = await pool.query(
+      'SELECT is_live FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ isLive: result.rows[0].is_live });
+  } catch (error) {
+    console.error('Error fetching user status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+

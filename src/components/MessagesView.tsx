@@ -171,10 +171,18 @@ export function MessagesView() {
     if (!otherUser) return;
 
     try {
+      // Get the request ID from the conversation or first message
+      const requestId = conversation.requestId || messages[0]?.requestId;
+      
+      if (!requestId) {
+        console.error('No request ID found for conversation');
+        return;
+      }
+
       await sendMessage.mutateAsync({
-        conversationId: selectedConversationId,
         content,
         toUserId: otherUser.id,
+        requestId: requestId  // Use the actual request ID
       });
     } catch (error) {
       console.error('Failed to send message:', error);
