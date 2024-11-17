@@ -16,7 +16,9 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "allowJs": true,
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["src/*"],
       "*": ["node_modules/*"]
     }
   },
