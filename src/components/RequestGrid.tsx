@@ -2,7 +2,7 @@ import React from 'react';
 import { RequestCard } from './RequestCard';
 import { useRequests, useDeleteRequest } from '../hooks/useRequests';
 import { Category } from '../types';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { socket } from '../lib/socket';
 import { updateUserLiveStatus } from '../api';
 

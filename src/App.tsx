@@ -14,8 +14,16 @@ import { socket } from './lib/socket';
 import { useStore } from './store';
 import { useStreamStatus } from './lib/twitch';
 
-// Move queryClient outside the component
-const queryClient = new QueryClient();
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 // Add custom scrollbar styles
 const globalStyles = `
