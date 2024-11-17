@@ -16,7 +16,7 @@ const socket = io(SOCKET_URL, {
   timeout: 60000,
   withCredentials: true,
   extraHeaders: {
-    'Access-Control-Allow-Origin': '*'
+    'Origin': 'https://stirring-longma-bc41fd.netlify.app'
   }
 });
 
@@ -58,13 +58,11 @@ export function getTwitchAuthUrl() {
 }
 
 export async function getTwitchUser(accessToken: string): Promise<TwitchUser> {
-  // First get user data
   const userResponse = await fetch('https://api.twitch.tv/helix/users', {
-    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'Client-Id': import.meta.env.VITE_TWITCH_CLIENT_ID,
-    },
+      'Client-Id': TWITCH_CLIENT_ID
+    }
   });
 
   if (!userResponse.ok) {
