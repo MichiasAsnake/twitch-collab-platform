@@ -1,68 +1,79 @@
 import express from 'express';
-import cors from 'cors';
 import { createServer } from 'http';
-import { setupWebSocket, ensureUserSubscribed } from './websocket';
-import userRoutes from './api/users';
 import { Server } from 'socket.io';
-import webhookRoutes from './routes/webhooks';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ['GET', 'POST']
-  }
-});
+const httpServer = createServer(app);
 
-// Make io available globally
-declare global {
-  var io: Server;
-}
-global.io = io;
-
-// Setup middleware
-app.use(cors());
+// Middleware
 app.use(express.json());
-app.use('/api/users', userRoutes);
-app.use('/webhooks', webhookRoutes);
+app.use(express.urlencoded({ extended: true }));
 
-// Setup WebSocket with EventSub
-setupWebSocket(server);
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://stirring-longma-bc41fd.netlify.app']
+    : ['http://localhost:5173'],
+  credentials: true
+}));
 
-// Your existing routes...
-
-// When a user authenticates, subscribe to their stream status
-app.post('/api/auth/twitch/callback', async (req, res) => {
-  try {
-    // ... your existing auth code ...
-
-    // After saving user to database, subscribe to their stream status
-    await ensureUserSubscribed(twitchUserId);
-
-    res.json({ /* your response */ });
-  } catch (error) {
-    console.error('Auth error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+// Socket.IO setup
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production'
+      ? ['https://stirring-longma-bc41fd.netlify.app']
+      : ['http://localhost:5173'],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
-// When new users are added, subscribe to their events
-app.post('/api/users', async (req, res) => {
-  try {
-    // ... your existing user creation code ...
-    
-    // Subscribe to their stream events
-    await ensureUserSubscribed(userId);
-    
-    res.json({ /* your response */ });
-  } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
-  }
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../dist')));
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
-// Use server.listen instead of app.listen
-server.listen(3000, () => {
-  console.log('Server running on port 3000');
-}); 
+// API routes
+app.get('/api', (req, res) => {
+  res.json({ message: 'API is running' });
+});
+
+// Handle SPA routing in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../dist/index.html'));
+  });
+}
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something broke!' });
+});
+
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+export default httpServer; 
