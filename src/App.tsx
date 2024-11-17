@@ -12,7 +12,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Footer } from './components/Footer';
 import { socket } from './lib/socket';
 import { useStore } from './store';
-import { TestControls } from './components/TestControls';
 import { useStreamStatus } from './lib/twitch';
 
 // Move queryClient outside the component
@@ -149,7 +148,6 @@ function AppContent() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ErrorAlert />
-      {import.meta.env.DEV && <TestControls />}
     </div>
   );
 }
