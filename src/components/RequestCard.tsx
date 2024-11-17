@@ -8,10 +8,10 @@ import { deleteRequest } from '../api';
 import { TOP_LANGUAGES } from '../utils/languages';
 import ReactCountryFlag from 'react-country-flag';
 import { formatMessageDate } from '../utils/dateFormat';
+import { useStreamersStatus } from '../hooks/useStreamersStatus';
 
 interface RequestCardProps {
   request: CollabRequest;
-  isLive: boolean;
   onDelete?: () => void;
 }
 
@@ -50,7 +50,7 @@ const marqueeStyles = `
   }
 `;
 
-export function RequestCard({ request, isLive, onDelete }: RequestCardProps) {
+export function RequestCard({ request, onDelete }: RequestCardProps) {
   const [showMessageModal, setShowMessageModal] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
@@ -60,6 +60,9 @@ export function RequestCard({ request, isLive, onDelete }: RequestCardProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [key, setKey] = React.useState(0);
   
+  const { data: streamersStatus } = useStreamersStatus(request?.user?.id ? [request.user.id] : []);
+  const isLive = streamersStatus?.find(status => status.userId === request?.user?.id)?.isLive || false;
+
   React.useEffect(() => {
     if (isExpanded && descriptionRef.current) {
       const contentHeight = descriptionRef.current.scrollHeight;
@@ -131,7 +134,7 @@ export function RequestCard({ request, isLive, onDelete }: RequestCardProps) {
         key={key}
         className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 overflow-hidden relative ${
           isExpanded ? expandedHeight : 'h-[250px]'
-        } ${isLive ? 'live-styles' : ''}`}
+        }`}
         style={{ contain: 'paint', width: ' 350px' }}
       >
         {isOwner && (

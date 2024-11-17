@@ -1,11 +1,10 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { RequestCard } from './RequestCard';
 import { useRequests, useDeleteRequest } from '../hooks/useRequests';
 import { Category } from '../types';
 import { useQueryClient } from 'react-query';
 import { socket } from '../lib/socket';
 import { updateUserLiveStatus } from '../api';
-import { useStreamersStatus } from '../hooks/useStreamersStatus';
 
 interface RequestGridProps {
   selectedCategory: Category | null;
@@ -18,34 +17,58 @@ export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }
   const deleteRequestMutation = useDeleteRequest();
   const queryClient = useQueryClient();
 
-  // Get all unique user IDs from all requests
-  const userIds = useMemo(() => 
-    [...new Set(requests.map(request => request.user.id))], 
-    [requests]
-  );
-  
-  // Single status subscription for all streamers
-  const { data: streamersStatus = [] } = useStreamersStatus(userIds);
+  React.useEffect(() => {
+    const handleStatusUpdate = async ({ userId, isLive }: { userId: string, isLive: boolean }) => {
+      // Update database
+      await updateUserLiveStatus(userId, isLive);
+      
+      // Update local cache
+      queryClient.setQueryData(['requests'], (oldRequests: any[] = []) => 
+        oldRequests.map((request) => 
+          request.user.id === userId 
+            ? {
+                ...request,
+                user: {
+                  ...request.user,
+                  isLive,
+                }
+              }
+            : request
+        )
+      );
+    };
 
-  // Add the requestKey memo
-  const requestKey = useMemo(() => 
+    socket.on('statusUpdate', handleStatusUpdate);
+    return () => {
+      socket.off('statusUpdate', handleStatusUpdate);
+    };
+  }, [queryClient]);
+
+  const requestKey = React.useMemo(() => 
     requests.map(r => r.id).join(','), 
     [requests]
   );
 
-  const filteredRequests = useMemo(() => {
+  const filteredRequests = React.useMemo(() => {
     return requests.filter((request) => {
-      const isLive = streamersStatus.find(status => status.userId === request.user.id)?.isLive || false;
-      
       if (selectedCategory && !request.categories.includes(selectedCategory)) return false;
-      if (showLiveOnly && !isLive) return false;
+      if (showLiveOnly && !request.user.isLive) return false;
       if (selectedLanguage && request.language !== selectedLanguage) return false;
       return true;
     });
-  }, [requests, streamersStatus, selectedCategory, showLiveOnly, selectedLanguage]);
+  }, [requests, selectedCategory, showLiveOnly, selectedLanguage]);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading requests</div>;
+  React.useEffect(() => {
+    console.log('RequestGrid rendered with', filteredRequests.length, 'requests');
+  }, [filteredRequests]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error loading requests</div>;
+  }
 
   return (
     <div className="overflow-x-hidden w-full">
@@ -56,9 +79,9 @@ export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }
         >
           {filteredRequests.map((request) => (
             <RequestCard 
-              key={request.id}
+              key={`${request.id}-${request.categories.length}`}
               request={request}
-              isLive={streamersStatus.find(status => status.userId === request.user.id)?.isLive || false}
+              onDelete={() => deleteRequestMutation.mutate(request.id)}
             />
           ))}
         </div>
