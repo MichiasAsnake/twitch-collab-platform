@@ -3,7 +3,8 @@ import { ApiClient } from '@twurple/api';
 import { ClientCredentialsAuthProvider } from '@twurple/auth';
 import { EventSubHttpListener, ReverseProxyAdapter } from '@twurple/eventsub-http';
 import { NgrokAdapter } from '@twurple/eventsub-ngrok';
-import { getDb } from './db.js';
+import { pool as getDb } from './db';
+import { Pool } from 'pg';
 
 let io: Server;
 let listener: EventSubHttpListener;
@@ -16,6 +17,15 @@ const authProvider = new ClientCredentialsAuthProvider(
 );
 
 const apiClient = new ApiClient({ authProvider });
+
+// Add type for event handlers
+interface StreamEvent {
+  broadcasterId: string;
+  broadcasterLogin: string;
+  broadcasterName: string;
+  type: string;
+  startedAt?: string;
+}
 
 export async function ensureUserSubscribed(userId: string) {
   if (subscribedUsers.has(userId)) {
@@ -34,7 +44,7 @@ export async function ensureUserSubscribed(userId: string) {
     });
 
     // Subscribe to online events
-    const onlineSub = await listener.subscribeToStreamOnlineEvents(userId, async (event) => {
+    const onlineSub = await listener.subscribeToStreamOnlineEvents(userId, async (event: StreamEvent) => {
       console.log(`[EVENTSUB] Received ONLINE event for ${userId}`, event);
       
       const pool = await getDb();
@@ -52,7 +62,7 @@ export async function ensureUserSubscribed(userId: string) {
     });
 
     // Subscribe to offline events
-    const offlineSub = await listener.subscribeToStreamOfflineEvents(userId, async (event) => {
+    const offlineSub = await listener.subscribeToStreamOfflineEvents(userId, async (event: StreamEvent) => {
       console.log(`[EVENTSUB] Received OFFLINE event for ${userId}`, event);
       
       const pool = await getDb();

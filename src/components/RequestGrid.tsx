@@ -1,7 +1,7 @@
 import React from 'react';
 import { RequestCard } from './RequestCard';
 import { useRequests } from '../hooks/useRequests';
-import { Category } from '../types';
+import { Category, CollabRequest as Request } from '../types';
 import { useQueryClient } from '@tanstack/react-query';
 import { socket } from '../lib/socket';
 import { updateUserLiveStatus } from '../api';
@@ -44,12 +44,12 @@ export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }
   }, [queryClient]);
 
   const requestKey = React.useMemo(() => 
-    requests.map(r => r.id).join(','), 
+    requests.map((r: Request) => r.id).join(','), 
     [requests]
   );
 
   const filteredRequests = React.useMemo(() => {
-    return requests.filter((request) => {
+    return requests.filter((request: Request) => {
       if (selectedCategory && !request.categories.includes(selectedCategory)) return false;
       if (showLiveOnly && !request.user.isLive) return false;
       if (selectedLanguage && request.language !== selectedLanguage) return false;
@@ -76,7 +76,7 @@ export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }
           key={requestKey}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8"
         >
-          {filteredRequests.map((request) => (
+          {filteredRequests.map((request: Request) => (
             <RequestCard 
               key={`${request.id}-${request.categories.length}`}
               request={request}

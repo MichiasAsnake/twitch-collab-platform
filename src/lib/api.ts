@@ -1,4 +1,3 @@
-import { useStore } from '../store';
 import { CollabRequest, User } from '../types';
 import { getTwitchAuthUrl } from './twitch';
 
@@ -99,7 +98,7 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Coll
       localStorage.removeItem('twitch_token');
       localStorage.removeItem('twitch_user_id');
       window.location.href = getTwitchAuthUrl();
-      return;
+      throw new Error('Authentication required');
     }
     throw new Error(error.error || 'Failed to create request');
   }

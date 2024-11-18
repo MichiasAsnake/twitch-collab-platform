@@ -61,9 +61,21 @@ export interface CreateRequestPayload {
     category?: string;
     title?: string;
   };
+  language?: string;
 }
 
 export interface StreamerStatus {
   userId: string;
   isLive: boolean;
+}
+
+export interface Request {
+  id: string;
+  categories: Category[];
+  language: string;
+  user: {
+    id: string;
+    isLive: boolean;
+  };
+  // ... add any other properties your Request type needs
 }

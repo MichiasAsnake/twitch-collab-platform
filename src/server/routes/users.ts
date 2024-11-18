@@ -1,4 +1,9 @@
-router.put('/api/users/:userId/status', async (req, res) => {
+import { Router } from 'express';
+import { pool as db } from '../../lib/db';
+
+const router = Router();
+
+router.put('/api/users/:userId/status', async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { isLive } = req.body;
   
@@ -12,4 +17,6 @@ router.put('/api/users/:userId/status', async (req, res) => {
     console.error('Error updating user live status:', error);
     res.status(500).json({ error: 'Failed to update status' });
   }
-}); 
+});
+
+export default router; 

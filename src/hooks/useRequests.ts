@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { fetchRequests, createRequest, deleteRequest } from '../lib/api';
+import { fetchRequests, deleteRequest } from '../lib/api';
 import { useStore } from '../store';
 import { CollabRequest, CreateRequestPayload } from '../types';
 
@@ -46,6 +46,10 @@ export function useCreateRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+    },
+    onError: (error: Error) => {
+      const errorMessage = error?.message || 'Failed to create request';
+      setError(errorMessage);
     }
   });
 }

@@ -270,7 +270,7 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
           </div>
           
           <div className="absolute bottom-3 right-4 text-xs text-gray-500 dark:text-gray-400">
-            {formatMessageDate(request.created_at)}
+            {formatMessageDate(request.createdAt)}
           </div>
         </div>
       </div>
