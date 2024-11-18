@@ -4,11 +4,12 @@ import { MessageSquare, X } from 'lucide-react';
 import { Modal } from './Modal';
 import { MessageModal } from './MessageModal';
 import { getTwitchAuthUrl } from '../lib/twitch';
-import { deleteRequest } from '../api';
 import { TOP_LANGUAGES } from '../utils/languages';
 import ReactCountryFlag from 'react-country-flag';
 import { formatMessageDate } from '../utils/dateFormat';
 import { useStreamersStatus } from '../hooks/useStreamersStatus';
+import { useStore } from '../store';
+import { useDeleteRequest } from '../hooks/useRequests';
 
 interface RequestCardProps {
   request: CollabRequest;
@@ -63,6 +64,9 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
   const { data: streamersStatus } = useStreamersStatus(request?.user?.id ? [request.user.id] : []);
   const isLive = streamersStatus?.find(status => status.userId === request?.user?.id)?.isLive || false;
 
+  const setStoreError = useStore((state) => state.setError);
+  const deleteRequestMutation = useDeleteRequest();
+
   React.useEffect(() => {
     if (isExpanded && descriptionRef.current) {
       const contentHeight = descriptionRef.current.scrollHeight;
@@ -91,25 +95,20 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('twitch_token');
-      if (!token) {
-        window.location.href = getTwitchAuthUrl();
-        return;
-      }
-
       setIsDeleting(true);
       setDeleteError(null);
+      setStoreError(null);
       
-      await deleteRequest(request.id);
-      onDelete?.();
+      await deleteRequestMutation.mutateAsync(request.id);
       setShowDeleteModal(false);
     } catch (error) {
       console.error('Error deleting request:', error);
-      if (error instanceof Error && error.message === 'Invalid Twitch token') {
+      if (error instanceof Error && error.message === 'Not authenticated') {
         window.location.href = getTwitchAuthUrl();
         return;
       }
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete request');
+      setStoreError(error instanceof Error ? error.message : 'Failed to delete request');
     } finally {
       setIsDeleting(false);
     }
@@ -283,6 +282,9 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
           title="Delete Request"
         >
           <div className="p-6">
+            {deleteError && (
+              <p className="text-red-500 mb-4">{deleteError}</p>
+            )}
             <p className="text-gray-700 dark:text-gray-300 mb-6">
               Are you sure you want to delete this request?
             </p>

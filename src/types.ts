@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export interface TwitchUser {
   id: string;
   login: string;
@@ -63,4 +61,9 @@ export interface CreateRequestPayload {
     category?: string;
     title?: string;
   };
+}
+
+export interface StreamerStatus {
+  userId: string;
+  isLive: boolean;
 }

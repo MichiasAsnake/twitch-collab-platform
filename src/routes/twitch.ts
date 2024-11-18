@@ -1,6 +1,5 @@
 import express from 'express';
-import WebSocket from 'ws';
-import { io } from '../socket';  // You'll need to export io from your socket setup
+import { socket } from '../lib/socket';  // Update path and import socket instead of io
 
 const router = express.Router();
 
@@ -15,7 +14,7 @@ router.post('/twitch', async (req, res) => {
     console.log('Received Twitch webhook:', { type: message.subscription.type, userId, isLive });
 
     // Broadcast via Socket.IO
-    io.emit('statusUpdate', { userId, isLive });
+    socket.emit('statusUpdate', { userId, isLive });
   }
 
   res.sendStatus(200);

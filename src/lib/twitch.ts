@@ -1,7 +1,8 @@
-import { TwitchUser } from '../types';
+import { TwitchUser, StreamerStatus } from '../types';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { useStore } from '../store';
 
 const TWITCH_CLIENT_ID = import.meta.env.VITE_TWITCH_CLIENT_ID?.trim();
 const TWITCH_REDIRECT_URI = import.meta.env.VITE_TWITCH_REDIRECT_URI?.trim();
@@ -115,32 +116,20 @@ export async function getTwitchUser(accessToken: string): Promise<TwitchUser> {
 // Add this function to get app access token
 export async function getAppAccessToken() {
   try {
-    // Make sure these environment variables are properly set
-    const clientId = import.meta.env.VITE_TWITCH_CLIENT_ID?.trim();
-    const clientSecret = import.meta.env.VITE_TWITCH_CLIENT_SECRET?.trim();
-
-    if (!clientId || !clientSecret) {
-      console.error('Missing Twitch credentials:', { clientId: !!clientId, clientSecret: !!clientSecret });
-      throw new Error('Twitch credentials not configured');
-    }
-
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: import.meta.env.VITE_TWITCH_CLIENT_ID,
+        client_secret: import.meta.env.VITE_TWITCH_CLIENT_SECRET,
         grant_type: 'client_credentials'
       })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to get app token:', errorText);
-      throw new Error('Failed to get app token');
+      throw new Error('Failed to get app access token');
     }
 
     const data = await response.json();

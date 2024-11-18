@@ -1,6 +1,6 @@
 import React from 'react';
 import { RequestCard } from './RequestCard';
-import { useRequests, useDeleteRequest } from '../hooks/useRequests';
+import { useRequests } from '../hooks/useRequests';
 import { Category } from '../types';
 import { useQueryClient } from '@tanstack/react-query';
 import { socket } from '../lib/socket';
@@ -14,7 +14,6 @@ interface RequestGridProps {
 
 export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }: RequestGridProps) {
   const { data: requests = [], isLoading, error } = useRequests();
-  const deleteRequestMutation = useDeleteRequest();
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -81,7 +80,6 @@ export function RequestGrid({ selectedCategory, showLiveOnly, selectedLanguage }
             <RequestCard 
               key={`${request.id}-${request.categories.length}`}
               request={request}
-              onDelete={() => deleteRequestMutation.mutate(request.id)}
             />
           ))}
         </div>

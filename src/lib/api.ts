@@ -118,13 +118,28 @@ export const fetchRequests = async () => {
 };
 
 export const deleteRequest = async (requestId: string) => {
+  const token = localStorage.getItem('twitch_token');
+  const userId = localStorage.getItem('twitch_user_id');
+
+  if (!token || !userId) {
+    throw new Error('Not authenticated');
+  }
+
   const response = await fetch(`${API_URL}/api/requests/${requestId}`, {
     method: 'DELETE',
-    credentials: 'include'
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ userId: userId.toString() })
   });
+
   if (!response.ok) {
-    throw new Error('Failed to delete request');
+    const error = await response.json();
+    console.log('Delete request failed with:', error);
+    throw new Error(error.error || 'Failed to delete request');
   }
+
   return requestId;
 };
 
