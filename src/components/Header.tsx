@@ -3,9 +3,9 @@ import { Moon, Sun, MessageSquare, Plus, Waves, LogOut } from 'lucide-react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useStore } from '../store';
 import { getTwitchAuthUrl } from '../lib/twitch';
-import { Modal } from './Modal';
-import { NewRequestForm } from './NewRequestForm';
-import { InboxModal } from './InboxModal';
+import { Modal } from '../components/Modal';
+import { NewRequestForm } from '../components/NewRequestForm';
+import { InboxModal } from '../components/InboxModal';
 import { socket } from '../lib/socket';
 import { Message } from '../types';
 

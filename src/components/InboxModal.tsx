@@ -26,7 +26,7 @@ export function InboxModal({ onClose }: InboxModalProps) {
       setIsLoading(true);
       try {
         const data = await fetchUserMessages(currentUser.id);
-        set({ messages: data });
+        setMessages(data);
       } catch (error) {
         console.error('Failed to fetch messages:', error);
       } finally {

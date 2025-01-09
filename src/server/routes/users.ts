@@ -1,22 +1,17 @@
+import { Request, Response } from 'express';
 import { Router } from 'express';
-import { pool as db } from '../../lib/db';
 
 const router = Router();
 
-router.put('/api/users/:userId/status', async (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const { isLive } = req.body;
+router.get('/:userId', async (req: Request, res: Response) => {
+  const userId = req.params.userId;
+  const isLive = await checkStreamStatus(userId);
   
-  try {
-    await db.query(
-      'UPDATE users SET is_live = $1 WHERE id = $2',
-      [isLive, userId]
-    );
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error updating user live status:', error);
-    res.status(500).json({ error: 'Failed to update status' });
-  }
+  res.json({ isLive });
 });
+
+async function checkStreamStatus(userId: string): Promise<boolean> {
+  return false;
+}
 
 export default router; 
