@@ -10,5 +10,14 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      onwarn(warning, warn) {
+        console.log('Build warning:', warning);
+        warn(warning);
+      }
+    }
+  },
+  define: {
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
   }
 });

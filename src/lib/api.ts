@@ -86,6 +86,9 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Coll
     throw new Error('Not authenticated');
   }
 
+  // Log the full request URL
+  console.log('Making request to:', `${API_URL}/api/requests`);
+
   const response = await fetch(`${API_URL}/api/requests`, {
     method: 'POST',
     credentials: 'include',
