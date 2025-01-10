@@ -70,16 +70,21 @@ router.post('/requests', async (req, res) => {
   console.log('POST /requests called with body:', req.body);
   try {
     const { userId, title, description, language, categories } = req.body;
+    console.log('Parsed request data:', { userId, title, description, language, categories });
+    
     const requestId = uuidv4();
+    console.log('Generated requestId:', requestId);
     
     // Start a transaction
     await db.query('BEGIN');
+    console.log('Transaction started');
     
     // Insert request
     const result = await db.query(
       'INSERT INTO requests (id, user_id, title, description, language) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [requestId, userId, title, description, language]
     );
+    console.log('Request inserted:', result.rows[0]);
     
     // Insert categories
     if (categories && categories.length > 0) {
@@ -88,15 +93,22 @@ router.post('/requests', async (req, res) => {
           'INSERT INTO request_categories (request_id, category) VALUES ($1, $2)',
           [requestId, category]
         );
+        console.log('Category inserted:', category);
       }
     }
     
     await db.query('COMMIT');
+    console.log('Transaction committed');
     res.json(result.rows[0]);
   } catch (error) {
     await db.query('ROLLBACK');
-    console.error('Error creating request:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Detailed error:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
@@ -127,6 +139,20 @@ router.get('/requests/test', async (req, res) => {
     res.json({ count: result.rows[0].count });
   } catch (error) {
     console.error('Error testing requests table:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a test route to create a sample request
+router.get('/requests/create-test', async (req, res) => {
+  try {
+    const result = await db.query(
+      'INSERT INTO requests (id, user_id, title, description, language) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [uuidv4(), 'test-user', 'Test Request', 'This is a test request', 'en']
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating test request:', error);
     res.status(500).json({ error: error.message });
   }
 });
