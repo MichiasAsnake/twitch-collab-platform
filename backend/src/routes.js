@@ -157,5 +157,34 @@ router.get('/requests/create-test', async (req, res) => {
   }
 });
 
+// Add a test route to create a test user and request
+router.get('/setup-test', async (req, res) => {
+  try {
+    // Start transaction
+    await db.query('BEGIN');
+    
+    // Create test user
+    const userId = 'test-user';
+    await db.query(
+      'INSERT INTO users (id, login, display_name, profile_image_url) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING',
+      [userId, 'testuser', 'Test User', 'https://example.com/avatar.png']
+    );
+    
+    // Create test request
+    const requestId = uuidv4();
+    const result = await db.query(
+      'INSERT INTO requests (id, user_id, title, description, language) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [requestId, userId, 'Test Request', 'This is a test request', 'en']
+    );
+    
+    await db.query('COMMIT');
+    res.json(result.rows[0]);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Error in setup:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export { router };
 
