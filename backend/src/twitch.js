@@ -33,7 +33,7 @@ export async function subscribeToStreamStatus(userId) {
         transport: {
           method: 'webhook',
           callback: `${process.env.API_URL}/webhooks/twitch`,
-          secret: process.env.WEBHOOK_SECRET
+          secret: process.env.TWITCH_WEBHOOK_SECRET
         }
       })
     });

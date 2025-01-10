@@ -10,6 +10,10 @@ const pool = new pg.Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+export async function getDb() {
+  return pool;
+}
+
 const initDb = async () => {
   try {
     const createTables = `
