@@ -26,7 +26,8 @@ export function useCreateRequest() {
 
   return useMutation({
     mutationFn: async (data: CreateRequestPayload) => {
-      const response = await fetch('/api/requests', {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/api/requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

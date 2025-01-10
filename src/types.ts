@@ -41,9 +41,12 @@ export interface Conversation {
 
 export interface User {
   id: string;
+  login: string;
   displayName: string;
   profileImageUrl: string;
   isLive?: boolean;
+  category?: string;
+  title?: string;
 }
 
 export type Category = 'Just Chatting' | 'Rust' | 'GTA' | 'Call of Duty';
