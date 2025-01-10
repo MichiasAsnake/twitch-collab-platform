@@ -46,6 +46,19 @@ app.get('/health', (_: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Root route handler
+app.get('/', (_: Request, res: Response) => {
+  res.json({
+    message: 'Welcome to the Twitch Collab API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      requests: '/api/requests'
+    }
+  });
+});
+
 // API routes
 app.get('/api', (_: Request, res: Response) => {
   res.json({ message: 'API is running' });
@@ -55,6 +68,14 @@ app.get('/api', (_: Request, res: Response) => {
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (_, res) => {
     res.sendFile(path.join(__dirname, '../../dist/index.html'));
+  });
+} else {
+  // 404 handler for non-production
+  app.use((_: Request, res: Response) => {
+    res.status(404).json({ 
+      error: 'Route not found',
+      message: 'The requested endpoint does not exist'
+    });
   });
 }
 
