@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { Server } from 'socket.io';
 
-export function setupWebSocket(server) {
+function setupWebSocket(server) {
   const io = new Server(server, {
     cors: {
       origin: process.env.NODE_ENV === 'production'
