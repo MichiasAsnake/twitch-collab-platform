@@ -3,10 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build:server": "tsc -p tsconfig.server.json",
-    "build:client": "vite build",
-    "build": "tsc -p tsconfig.server.json && cp src/server/db/init.sql dist/server/db/",
-    "start": "node dist/server/index.js",
+    "build": "vite build",
     "dev": "vite",
     "preview": "vite preview"
   },
