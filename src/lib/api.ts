@@ -5,9 +5,11 @@ export const API_URL = import.meta.env.VITE_API_URL;
 
 
 interface CreateRequestPayload {
+  userId: string;
   title: string;
   description: string;
-  category: string;
+  language: string;
+  categories: string[];
 }
 
 export const sendMessage = async ({
@@ -78,7 +80,9 @@ export async function fetchUserMessages(userId: string) {
 
 export async function createRequest(payload: CreateRequestPayload): Promise<CollabRequest> {
   const token = localStorage.getItem('twitch_token');
-  if (!token) {
+  const userId = localStorage.getItem('twitch_user_id');
+
+  if (!token || !userId) {
     throw new Error('Not authenticated');
   }
 
@@ -89,7 +93,10 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Coll
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      userId
+    })
   });
 
   if (!response.ok) {
