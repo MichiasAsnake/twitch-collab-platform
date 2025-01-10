@@ -43,6 +43,7 @@ export interface User {
   id: string;
   displayName: string;
   profileImageUrl: string;
+  isLive?: boolean;
 }
 
 export type Category = 'Just Chatting' | 'Rust' | 'GTA' | 'Call of Duty';

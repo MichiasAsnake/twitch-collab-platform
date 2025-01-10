@@ -100,20 +100,21 @@ export function NewRequestForm({ onClose }: NewRequestFormProps) {
     }
 
     try {
+      console.log('Creating request with user:', user);
       await createRequest.mutateAsync({
         title,
         description,
         categories: selectedCategories,
-        language: selectedLanguage,
+        language: selectedLanguage || 'en',
         userId: user.id,
         user: {
           id: user.id,
           login: user.login,
           displayName: user.displayName,
           profileImageUrl: user.profileImageUrl,
-          isLive: user.isLive,
-          category: user.category,
-          title: user.title
+          isLive: user.isLive || false,
+          category: user.category || '',
+          title: user.title || ''
         }
       });
       onClose();
