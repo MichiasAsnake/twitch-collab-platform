@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Request, Response, NextFunction } from 'express';
 import { initDb } from './db';
+import apiRouter from './routes/api/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,7 +60,10 @@ app.get('/', (_: Request, res: Response) => {
   });
 });
 
-// API routes
+// Mount API routes
+app.use('/api', apiRouter);
+
+// API status route
 app.get('/api', (_: Request, res: Response) => {
   res.json({ message: 'API is running' });
 });
