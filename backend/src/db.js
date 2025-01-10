@@ -68,4 +68,4 @@ export const db = {
   initDb
 };
 
-export { initDb, getDb };
+export { initDb };
