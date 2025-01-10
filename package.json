@@ -5,7 +5,7 @@
   "scripts": {
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build",
-    "build": "npm run build:server && npm run build:client",
+    "build": "tsc -p tsconfig.server.json && cp src/server/db/init.sql dist/server/db/",
     "start": "node dist/server/index.js",
     "dev": "vite",
     "preview": "vite preview"
