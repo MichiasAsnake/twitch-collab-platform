@@ -24,13 +24,19 @@ router.get('/users/:userId', async (req, res) => {
 });
 
 // Get messages
-router.get('/messages/:userId', async (req, res) => {
+router.get('/users/:userId/messages', async (req, res) => {
   try {
+    // First check if user exists
+    const userExists = await db.query('SELECT id FROM users WHERE id = $1', [req.params.userId]);
+    if (!userExists.rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     const result = await db.query(
       'SELECT * FROM messages WHERE from_user_id = $1 OR to_user_id = $1 ORDER BY created_at DESC',
       [req.params.userId]
     );
-    res.json(result.rows);
+    res.json(result.rows || []); // Always return an array
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -56,9 +62,23 @@ router.post('/messages', async (req, res) => {
 router.get('/requests', async (req, res) => {
   console.log('GET /requests called');
   try {
-    const result = await db.query('SELECT * FROM requests ORDER BY created_at DESC');
+    const result = await db.query(`
+      SELECT r.*, 
+             array_agg(rc.category) as categories,
+             json_build_object(
+               'id', u.id,
+               'login', u.login,
+               'display_name', u.display_name,
+               'profile_image_url', u.profile_image_url
+             ) as user
+      FROM requests r
+      LEFT JOIN request_categories rc ON r.id = rc.request_id
+      LEFT JOIN users u ON r.user_id = u.id
+      GROUP BY r.id, u.id
+      ORDER BY r.created_at DESC
+    `);
     console.log('Requests found:', result.rows.length);
-    res.json(result.rows);
+    res.json(result.rows || []); // Always return an array
   } catch (error) {
     console.error('Error fetching requests:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -183,6 +203,25 @@ router.get('/setup-test', async (req, res) => {
     await db.query('ROLLBACK');
     console.error('Error in setup:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Add this route to check request with categories
+router.get('/requests/:requestId', async (req, res) => {
+  try {
+    const request = await db.query('SELECT * FROM requests WHERE id = $1', [req.params.requestId]);
+    const categories = await db.query(
+      'SELECT category FROM request_categories WHERE request_id = $1',
+      [req.params.requestId]
+    );
+    
+    res.json({
+      ...request.rows[0],
+      categories: categories.rows.map(c => c.category)
+    });
+  } catch (error) {
+    console.error('Error fetching request:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
