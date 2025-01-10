@@ -7,15 +7,6 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'https://twitch-collab-backend.onrender.com',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
-  },
   base: './',
   build: {
     outDir: 'dist',
