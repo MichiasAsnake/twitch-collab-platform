@@ -1,5 +1,5 @@
 #!/bin/bash
 npm install
-mkdir -p dist/db
-cp src/db/init.sql dist/db/
+mkdir -p dist/server/db
+cp ../src/server/db/init.sql dist/server/db/
 npm run build 
