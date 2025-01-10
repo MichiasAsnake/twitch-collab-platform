@@ -35,3 +35,5 @@ export function setupWebSocket(server) {
 
   return io;
 }
+
+export { setupWebSocket };

@@ -38,4 +38,6 @@ export async function subscribeToStreamStatus(userId) {
       })
     });
   }
-} 
+}
+
+export { getAppAccessToken, subscribeToStreamStatus }; 

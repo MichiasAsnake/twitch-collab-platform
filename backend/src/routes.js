@@ -44,5 +44,5 @@ router.post('/messages', async (req, res) => {
   }
 });
 
-export default router;
+export { router };
 
