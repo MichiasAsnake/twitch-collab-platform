@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node dist/index.js",
-    "build": "tsc"
+    "start": "node src/index.js",
+    "build": "echo 'No build needed'"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.20",
