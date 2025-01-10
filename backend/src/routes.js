@@ -105,5 +105,31 @@ router.get('/test', (req, res) => {
   res.json({ message: 'API is working' });
 });
 
+// Add this near your test route
+router.get('/tables', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error checking tables:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add this near your test route
+router.get('/requests/test', async (req, res) => {
+  try {
+    const result = await db.query('SELECT COUNT(*) FROM requests');
+    res.json({ count: result.rows[0].count });
+  } catch (error) {
+    console.error('Error testing requests table:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export { router };
 
