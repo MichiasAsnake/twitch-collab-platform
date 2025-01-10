@@ -12,13 +12,29 @@ router.use((req, res, next) => {
   next();
 });
 
-// Get user profile
+// Get or create user profile
 router.get('/users/:userId', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.params.userId]);
-    res.json(result.rows[0] || null);
+    // Try to get existing user
+    let result = await db.query('SELECT * FROM users WHERE id = $1', [req.params.userId]);
+    
+    // If user doesn't exist, create them with default values
+    if (!result.rows.length) {
+      result = await db.query(
+        'INSERT INTO users (id, login, display_name, profile_image_url) VALUES ($1, $2, $3, $4) RETURNING *',
+        [
+          req.params.userId,
+          `user_${req.params.userId}`,  // Default login
+          `User ${req.params.userId}`,  // Default display name
+          'https://static-cdn.jtvnw.net/user-default-pictures-uv/75305d54-c7cc-40d1-bb9c-91fbe85943c7-profile_image-300x300.png'  // Default Twitch avatar
+        ]
+      );
+    }
+
+    // Return user data
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error('Error fetching/creating user:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -26,17 +42,27 @@ router.get('/users/:userId', async (req, res) => {
 // Get messages
 router.get('/users/:userId/messages', async (req, res) => {
   try {
-    // First check if user exists
-    const userExists = await db.query('SELECT id FROM users WHERE id = $1', [req.params.userId]);
-    if (!userExists.rows.length) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const result = await db.query(
-      'SELECT * FROM messages WHERE from_user_id = $1 OR to_user_id = $1 ORDER BY created_at DESC',
-      [req.params.userId]
-    );
-    res.json(result.rows || []); // Always return an array
+    const result = await db.query(`
+      SELECT m.*,
+        json_build_object(
+          'id', from_user.id,
+          'login', from_user.login,
+          'display_name', from_user.display_name,
+          'profile_image_url', from_user.profile_image_url
+        ) as from_user,
+        json_build_object(
+          'id', to_user.id,
+          'login', to_user.login,
+          'display_name', to_user.display_name,
+          'profile_image_url', to_user.profile_image_url
+        ) as to_user
+      FROM messages m
+      LEFT JOIN users from_user ON m.from_user_id = from_user.id
+      LEFT JOIN users to_user ON m.to_user_id = to_user.id
+      WHERE m.from_user_id = $1 OR m.to_user_id = $1
+      ORDER BY m.created_at DESC
+    `, [req.params.userId]);
+    res.json(result.rows || []);
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -64,12 +90,12 @@ router.get('/requests', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT r.*, 
-             array_agg(rc.category) as categories,
+             COALESCE(array_agg(rc.category) FILTER (WHERE rc.category IS NOT NULL), ARRAY[]::text[]) as categories,
              json_build_object(
                'id', u.id,
-               'login', u.login,
-               'display_name', u.display_name,
-               'profile_image_url', u.profile_image_url
+               'login', COALESCE(u.login, 'unknown'),
+               'display_name', COALESCE(u.display_name, 'Unknown User'),
+               'profile_image_url', COALESCE(u.profile_image_url, 'default-avatar.png')
              ) as user
       FROM requests r
       LEFT JOIN request_categories rc ON r.id = rc.request_id
@@ -78,7 +104,7 @@ router.get('/requests', async (req, res) => {
       ORDER BY r.created_at DESC
     `);
     console.log('Requests found:', result.rows.length);
-    res.json(result.rows || []); // Always return an array
+    res.json(result.rows || []);
   } catch (error) {
     console.error('Error fetching requests:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -90,8 +116,12 @@ router.post('/requests', async (req, res) => {
   console.log('POST /requests called with body:', req.body);
   try {
     const { userId, title, description, language, categories } = req.body;
-    console.log('Parsed request data:', { userId, title, description, language, categories });
     
+    // Validate required fields
+    if (!userId || !title || !description) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     const requestId = uuidv4();
     console.log('Generated requestId:', requestId);
     
@@ -221,6 +251,38 @@ router.get('/requests/:requestId', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user with their requests
+router.get('/users/:userId/requests', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        u.*,
+        COALESCE(json_agg(
+          json_build_object(
+            'id', r.id,
+            'title', r.title,
+            'description', r.description,
+            'language', r.language,
+            'created_at', r.created_at,
+            'categories', (
+              SELECT array_agg(category) 
+              FROM request_categories 
+              WHERE request_id = r.id
+            )
+          )
+        ) FILTER (WHERE r.id IS NOT NULL), '[]'::json) as requests
+      FROM users u
+      LEFT JOIN requests r ON u.id = r.user_id
+      WHERE u.id = $1
+      GROUP BY u.id
+    `, [req.params.userId]);
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    console.error('Error fetching user requests:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
