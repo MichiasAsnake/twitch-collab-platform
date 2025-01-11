@@ -52,28 +52,32 @@ export const useStore = create<State>()(
         set({ user });
       },
       addMessage: (message) => set((state) => {
-        if (state.messages.some(m => m.id === message.id)) {
+        if (!message || state.messages.some(m => m.id === message.id)) {
           return { messages: state.messages };
         }
         
         return {
           messages: [{
             ...message,
-            read: message.fromUser.id === state.user?.id
+            read: message.fromUser?.id === state.user?.id || false
           }, ...state.messages]
         };
       }),
       markMessageAsRead: (messageId) => set((state) => ({
         messages: state.messages.map(msg => 
-          msg.id === messageId ? { ...msg, read: true } : msg
+          msg?.id === messageId ? { ...msg, read: true } : msg
         )
       })),
       getUnreadCount: () => {
         const state = get();
+        const userId = state.user?.id;
+        if (!userId || !state.messages) return 0;
+        
         return state.messages.filter(msg => 
+          msg && 
           !msg.read && 
-          msg.toUser?.id === state.user?.id && 
-          msg.fromUser?.id !== state.user?.id
+          msg.toUser?.id === userId && 
+          msg.fromUser?.id !== userId
         ).length;
       },
       toggleDarkMode: () => set((state) => ({ 
@@ -98,7 +102,7 @@ export const useStore = create<State>()(
       setMessagesRead: (fromUserId) => 
         set(state => ({
           messages: state.messages.map(msg => 
-            (msg.fromUser.id === fromUserId || msg.toUser.id === fromUserId)
+            msg && (msg.fromUser?.id === fromUserId || msg.toUser?.id === fromUserId)
               ? { ...msg, read: true }
               : msg
           )
