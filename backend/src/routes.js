@@ -115,7 +115,7 @@ router.get('/requests', async (req, res) => {
 router.post('/requests', async (req, res) => {
   console.log('POST /requests called with body:', req.body);
   try {
-    const { userId, title, description, language, categories } = req.body;
+    const { userId, title, description, language, categories, user } = req.body;
     
     // Validate required fields
     if (!userId || !title || !description) {
@@ -128,6 +128,23 @@ router.post('/requests', async (req, res) => {
     // Start a transaction
     await db.query('BEGIN');
     console.log('Transaction started');
+
+    // Check if user exists, if not create them
+    const userExists = await db.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (!userExists.rows.length) {
+      await db.query(
+        'INSERT INTO users (id, login, display_name, profile_image_url, category, title) VALUES ($1, $2, $3, $4, $5, $6)',
+        [
+          userId,
+          user.login,
+          user.displayName,
+          user.profileImageUrl,
+          user.category || null,
+          user.title || null
+        ]
+      );
+      console.log('User created:', userId);
+    }
     
     // Insert request
     const result = await db.query(
