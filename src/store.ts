@@ -72,7 +72,8 @@ export const useStore = create<State>()(
         const state = get();
         return state.messages.filter(msg => 
           !msg.read && 
-          msg.toUser.id === state.user?.id
+          msg.toUser?.id === state.user?.id && 
+          msg.fromUser?.id !== state.user?.id
         ).length;
       },
       toggleDarkMode: () => set((state) => ({ 

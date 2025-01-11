@@ -60,6 +60,7 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
   const descriptionRef = React.useRef<HTMLDivElement>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [key, setKey] = React.useState(0);
+  const [formattedDate, setFormattedDate] = React.useState(formatMessageDate(request.createdAt));
   
   const { data: streamersStatus } = useStreamersStatus(request?.user?.id ? [request.user.id] : []);
   const isLive = streamersStatus?.find(status => status.userId === request?.user?.id)?.isLive || false;
@@ -88,6 +89,20 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
       }
     }
   }, [request.user.title]);
+
+  // Update date every minute
+  React.useEffect(() => {
+    const updateDate = () => {
+      setFormattedDate(formatMessageDate(request.createdAt));
+    };
+
+    const interval = setInterval(updateDate, 60000); // Update every minute
+    
+    // Initial update
+    updateDate();
+
+    return () => clearInterval(interval);
+  }, [request.createdAt]);
 
   const handleMessageClick = () => {
     setShowMessageModal(true);
@@ -269,8 +284,12 @@ export function RequestCard({ request, onDelete }: RequestCardProps) {
             </div>
           </div>
           
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {formattedDate}
+          </div>
+          
           <div className="absolute bottom-3 right-4 text-xs text-gray-500 dark:text-gray-400">
-            {formatMessageDate(request.createdAt)}
+            {formattedDate}
           </div>
         </div>
       </div>
