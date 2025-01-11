@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { User, Message } from '../types';
+import { TwitchUser, Message } from '../types';
 import { fetchUserMessages, sendMessage } from '../lib/api';
 import { socket } from '../lib/socket';
 import { formatMessageDate } from '../utils/dateFormat';
@@ -94,7 +94,12 @@ export function InboxModal({ onClose }: InboxModalProps) {
   const conversations = React.useMemo(() => {
     if (!currentUser) return {};
 
-    const groups = messages.reduce((acc, message) => {
+    return messages.reduce((acc, message) => {
+      if (!message?.fromUser?.id || !message?.toUser?.id) {
+        console.warn('Invalid message format:', message);
+        return acc;
+      }
+
       const otherUser = message.fromUser.id === currentUser.id 
         ? message.toUser 
         : message.fromUser;
@@ -127,9 +132,7 @@ export function InboxModal({ onClose }: InboxModalProps) {
       }
       
       return acc;
-    }, {} as Record<string, { user: User; messages: Message[]; latestMessage: Message }>);
-
-    return groups;
+    }, {} as Record<string, { user: TwitchUser; messages: Message[]; latestMessage: Message }>);
   }, [messages, currentUser]);
 
   return (

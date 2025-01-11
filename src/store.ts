@@ -10,9 +10,12 @@ interface AuthState {
 
 interface User {
   id: string;
+  login: string;
   displayName: string;
   profileImageUrl: string;
   isLive: boolean;
+  category?: string;
+  title?: string;
 }
 
 interface State {
