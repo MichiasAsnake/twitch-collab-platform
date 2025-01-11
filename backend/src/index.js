@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { router } from './routes.js';
+import apiRouter from './routes/api/index.js';
 import { setupWebSocket } from './websocket.js';
 import { initDb, getDb } from './db.js';
 import { subscribeToStreamStatus } from './twitch.js';
@@ -54,7 +54,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/api', router);
+app.use('/api', apiRouter);
 
 setupWebSocket(io);
 
