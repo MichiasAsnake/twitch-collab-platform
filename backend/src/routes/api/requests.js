@@ -92,7 +92,21 @@ router.post('/', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const pool = await getDb();
-    await pool.query('DELETE FROM requests WHERE id = $1', [req.params.id]);
+    const { userId } = req.body;
+
+    // First verify ownership
+    const result = await pool.query('SELECT user_id FROM requests WHERE id = $1', [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (result.rows[0].user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Delete the request
+    await pool.query('DELETE FROM requests WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting request:', error);
