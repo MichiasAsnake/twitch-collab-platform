@@ -93,14 +93,17 @@ router.get('/requests', async (req, res) => {
              COALESCE(array_agg(rc.category) FILTER (WHERE rc.category IS NOT NULL), ARRAY[]::text[]) as categories,
              json_build_object(
                'id', u.id,
-               'login', COALESCE(u.login, 'unknown'),
-               'display_name', COALESCE(u.display_name, 'Unknown User'),
-               'profile_image_url', COALESCE(u.profile_image_url, 'default-avatar.png')
+               'login', u.login,
+               'displayName', u.display_name,
+               'profileImageUrl', u.profile_image_url,
+               'isLive', u.is_live,
+               'category', u.category,
+               'title', u.title
              ) as user
       FROM requests r
       LEFT JOIN request_categories rc ON r.id = rc.request_id
       LEFT JOIN users u ON r.user_id = u.id
-      GROUP BY r.id, u.id
+      GROUP BY r.id, u.id, u.login, u.display_name, u.profile_image_url, u.is_live, u.category, u.title
       ORDER BY r.created_at DESC
     `);
     console.log('Requests found:', result.rows.length);
