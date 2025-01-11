@@ -22,7 +22,7 @@ const allowedOrigins = [
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
@@ -43,11 +43,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Client-Id']
 }));
 
-// Add preflight OPTIONS handling
+// Add preflight OPTIONS handling for all routes
 app.options('*', cors());
 
 app.use(express.json());
 
+// Add request logging middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();

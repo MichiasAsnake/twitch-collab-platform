@@ -136,6 +136,7 @@ export const deleteRequest = async (requestId: string) => {
 
   const response = await fetch(`${API_URL}/api/requests/${requestId}`, {
     method: 'DELETE',
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
